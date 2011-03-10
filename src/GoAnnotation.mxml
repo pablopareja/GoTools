@@ -1,0 +1,215 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:WindowedApplication xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					   xmlns:s="library://ns.adobe.com/flex/spark" 
+					   xmlns:mx="library://ns.adobe.com/flex/mx" currentState="Annotation"
+					   creationComplete="windowedapplication1_creationCompleteHandler(event)"
+					   >
+	<s:layout>
+		<s:VerticalLayout paddingLeft.Annotation="20" paddingRight.Annotation="20" 
+						  paddingTop.Annotation="20" paddingBottom.Annotation="20" 
+						  paddingLeft.GoSlim="20" paddingRight.GoSlim="20" 
+						  paddingTop.GoSlim="20" paddingBottom.GoSlim="20"/>
+	</s:layout>
+	<s:states>
+		<s:State name="Annotation"/>
+		<s:State name="GoSlim" />
+	</s:states>
+	<fx:Declarations>
+		<s:RadioButtonGroup id="proteinSeparatorRadioButtonGroup"/>
+		<s:RadioButtonGroup id="slimSetSeparatorRadioButtonGroup"/>
+		<s:RadioButtonGroup id="versionRadioButtonGroup"/>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.era7.bioinfo.go.comm.GoMapper;
+			import com.era7.bioinfo.xml.go.GoTerm;
+			import com.era7.bioinfo.xml.Protein;
+			import com.era7.bioinfo.xml.go.SlimSet;
+			import com.era7.communication.interfaces.ServerCallable;
+			import com.era7.communication.managers.MainManager;
+			import com.era7.communication.xml.Request;
+			import com.era7.communication.xml.Response;
+			
+			import mx.controls.Alert;
+			import mx.events.FlexEvent;
+			
+			
+			public static const GO_SLIM_STATE:String = "GoSlim";
+			public static const GO_ANNOTATION_STATE:String = "Annotation";
+			
+			protected var goMapper:GoMapper = null;
+			
+			protected var resultFile:File = null;
+			
+			
+
+			protected function windowedapplication1_creationCompleteHandler(event:FlexEvent):void
+			{
+				URLRequestDefaults.idleTimeout = 18000000;
+				
+				
+				goMapper = new GoMapper();
+			}
+
+
+			protected function goAnnotationRadioButton_clickHandler(event:MouseEvent):void
+			{
+				if(currentState != GO_ANNOTATION_STATE){
+					currentState = GO_ANNOTATION_STATE;
+				}
+			}
+
+
+			protected function goSlimRadioButton_clickHandler(event:MouseEvent):void
+			{
+				if(currentState != GO_SLIM_STATE){
+					currentState = GO_SLIM_STATE;
+				}
+			}
+
+
+			protected function visualizarResultadoButton_clickHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+			}
+
+			
+			private function getProteinsFromTextArea():XML{
+				var proteinsXML:XML = new XML(<proteins/>);
+				
+				var separator:String = "";
+				if(enterProteinRadioButton.selected){
+					separator = "\n";					
+				}else if(tabProteinRadioButton.selected){
+					separator = "\t";
+				}else if(whiteSpaceProteinRadioButton.selected){
+					separator = " ";
+				}else if(characterProteinRadioButton.selected){
+					separator = characterProteinTextInput.text;
+				}
+				
+				var proteinIds:Array = proteinIdsTextArea.text.split(separator);
+				
+				for each(var id:String in proteinIds){
+					if(id != "" && id != "\s"){
+						var tempProtein:Protein = new Protein();
+						tempProtein.id = id;
+						proteinsXML.appendChild(tempProtein.getContent());
+					}					
+				}
+				
+				return proteinsXML;
+			}
+			private function getSlimSetFromTextArea():SlimSet{
+				var slimSet:SlimSet = new SlimSet();
+				
+				var separator:String = "";
+				if(enterSlimSetRadioButton.selected){
+					separator = "\n";					
+				}else if(tabSlimSetRadioButton.selected){
+					separator = "\t";
+				}else if(whiteSpaceSlimSetRadioButton.selected){
+					separator = " ";
+				}else if(characterSlimSetRadioButton.selected){
+					separator = characterSlimSetTextInput.text;
+				}
+				
+				var goIds:Array = slimSetIdsTextArea.text.split(separator);
+				
+				for each(var id:String in goIds){
+					if(id != "" && id != "\s"){
+						var tempGo:GoTerm = new GoTerm();
+						tempGo.id = id;
+						slimSet.getContent().appendChild(tempGo.getContent());
+					}					
+				}
+				
+				return slimSet;
+			}
+
+			protected function getFileButton_clickHandler(event:MouseEvent):void
+			{
+				resultFile = new File();
+				resultFile.addEventListener(Event.SELECT,onResultFileSelect);
+				resultFile.browseForSave("GoSlim.xml");
+			}	
+			
+			protected function onResultFileSelect(event:Event):void{
+				var proteinsXML:XML = getProteinsFromTextArea();
+				
+				if(currentState == GO_ANNOTATION_STATE){
+					goMapper.goAnnotation(proteinsXML,resultFile,mysqlRadioButton.selected);					
+				}else if(currentState == GO_SLIM_STATE){
+					var slimSet:SlimSet = getSlimSetFromTextArea();
+					goMapper.goSlim(proteinsXML,slimSet,goCountCheckBox.selected,resultFile,mysqlRadioButton.selected);
+				}
+			}
+			
+			
+			
+
+		]]>
+	</fx:Script>
+	<mx:VBox width="100%" paddingLeft="5" paddingRight="5" 
+			 paddingTop="5" paddingBottom="5" contentBackgroundColor="#EAEAEA" backgroundColor="#F0F0F0">
+		<s:Label text="Selecciona version a utilizar:" fontWeight="bold"/>
+		<s:RadioButton label="Version MySql GO" 
+					   selected="true" 
+					   id="mysqlRadioButton"
+					   groupName="versionRadioButtonGroup" enabled="true"/>
+		<s:RadioButton label="Version Bio4j" 
+					   enabled="true" 
+					   id="bio4jRadioButton"
+					   groupName="versionRadioButtonGroup" selected="false"/>
+	</mx:VBox>
+	<s:HGroup width="100%">
+		<s:RadioButton label="GoAnnotation" groupName="radioButtonGroup" selected="true" 
+					   id="goAnnotationRadioButton" click="goAnnotationRadioButton_clickHandler(event)" 
+					   left="20" top="10" />
+		<s:RadioButton label="GoSlim" groupName="radioButtonGroup" id="goSlimRadioButton" selected="false" 
+					   click="goSlimRadioButton_clickHandler(event)" top="10" left="136"   />
+	</s:HGroup>	
+	<s:VGroup width="100%">
+		<s:Label text="Introduzca los ids de proteina en el cuadro de texto y especifique el separador:&#xd;&#xd;" 
+				 height="15" left="20" top="49" />
+		<s:TextArea y="72" left="20" right="20" id="proteinIdsTextArea" editable="true"  width="100%"/>
+		<s:HGroup y="194" left="20" right="20" verticalAlign="middle" >
+			<s:Label text="Separador:"/>
+			<s:RadioButton label=" Enter ('\n')" groupName="proteinSeparatorRadioButtonGroup" 
+						   id="enterProteinRadioButton" selected="true"/>
+			<s:RadioButton label=" Tabulador ('\t')" groupName="proteinSeparatorRadioButtonGroup" 
+						   id="tabProteinRadioButton" selected.Annotation="false"/>
+			<s:RadioButton label=" Espacio (' ')" groupName="proteinSeparatorRadioButtonGroup" 
+						   id="whiteSpaceProteinRadioButton" selected.Annotation="false"/>
+			<s:RadioButton label="Caracter:" groupName="proteinSeparatorRadioButtonGroup" 
+						   id="characterProteinRadioButton" selected.Annotation="false"/>
+			<s:TextInput enabled="true" id="characterProteinTextInput" width="18" maxChars="1"/>
+		</s:HGroup>	
+	</s:VGroup>	
+	<s:VGroup includeIn="GoSlim" width="100%">
+		<s:Label text="Introduzca los ids de go del conjunto Slim en el cuadro de texto y especifique el separador:&#xd;&#xd;" 
+				 height="15" left="20" top="260" includeIn="GoSlim" />
+		<s:TextArea y="287" left="20" right="20" id="slimSetIdsTextArea" 
+					editable="true" width="100%"/>
+		<s:HGroup y="409" left="20" right="20" verticalAlign="middle">
+			<s:Label text="Separador:"/>
+			<s:RadioButton label=" Enter ('\n')" groupName="slimSetSeparatorRadioButtonGroup" 
+						   id="enterSlimSetRadioButton" selected="true"/>
+			<s:RadioButton label=" Tabulador ('\t')" groupName="slimSetSeparatorRadioButtonGroup" 
+						   id="tabSlimSetRadioButton"/>
+			<s:RadioButton label=" Espacio (' ')" groupName="slimSetSeparatorRadioButtonGroup" 
+						   id="whiteSpaceSlimSetRadioButton"/>
+			<s:RadioButton label="Caracter:" groupName="slimSetSeparatorRadioButtonGroup" 
+						   id="characterSlimSetRadioButton"/>
+			<s:TextInput enabled="true" id="characterSlimSetTextInput" width="18" maxChars="1"/>
+		</s:HGroup>
+	</s:VGroup>
+	<s:HGroup width="100%" verticalAlign="middle" gap="10" horizontalAlign="right">
+		<s:CheckBox includeIn="GoSlim" label="Incluir go count" id="goCountCheckBox" selected="true"/>
+		<mx:Spacer includeIn="GoSlim" width="100%"/>
+		<s:Button label="VisualizarResultado" id="visualizarResultadoButton" 
+				  click="visualizarResultadoButton_clickHandler(event)" visible.Annotation="false" visible.GoSlim="false"/>
+		<s:Button label="Generar archivo" id="getFileButton" click="getFileButton_clickHandler(event)" />
+	</s:HGroup>
+</s:WindowedApplication>
